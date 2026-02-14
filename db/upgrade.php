@@ -213,5 +213,56 @@ function xmldb_quizaccess_proctoring_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025030606, 'quizaccess', 'proctoring');
     }
 
+    if ($oldversion < 2026021300) {
+        // Add new fields to quizaccess_proctoring_logs.
+        $table = new xmldb_table('quizaccess_proctoring_logs');
+
+        $field1 = new xmldb_field('countfaces', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'awsflag');
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+
+        $field2 = new xmldb_field('validateface', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'countfaces');
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        $field3 = new xmldb_field('storageimage', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'validateface');
+        if (!$dbman->field_exists($table, $field3)) {
+            $dbman->add_field($table, $field3);
+        }
+
+        // Create rekognition_data table.
+        $table = new xmldb_table('rekognition_data');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('quizaccessproctoringlogid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('similarity', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('eyeleftx', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('eyelefty', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('eyerightx', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('eyerighty', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('mouthleftx', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('mouthlefty', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('mouthrightx', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('mouthrighty', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('nosex', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('nosey', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('brightness', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('sharpness', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0.00');
+        $table->add_field('rekognitiondata', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('quizaccessproctoringlogid', XMLDB_KEY_FOREIGN_UNIQUE,
+            ['quizaccessproctoringlogid'], 'quizaccess_proctoring_logs', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026021300, 'quizaccess', 'proctoring');
+    }
+
     return true;
 }

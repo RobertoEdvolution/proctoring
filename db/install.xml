@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/quiz/accessrule/proctoring/db" VERSION="2024100103"
+<XMLDB PATH="mod/quiz/accessrule/proctoring/db" VERSION="2026021300"
        COMMENT="XMLDB file for Moodle mod/quiz/accessrule/proctoring"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="../../../../../lib/xmldb/xmldb.xsd"
@@ -36,11 +36,17 @@
                 <FIELD NAME="awsscore" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
                        SEQUENCE="false" COMMENT="AWS image match score" PREVIOUS="status" NEXT="awsflag"/>
                 <FIELD NAME="awsflag" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
-                       SEQUENCE="false" COMMENT="AWS image match score" PREVIOUS="awsscore" NEXT="timemodified"/>
+                       SEQUENCE="false" COMMENT="AWS image match score" PREVIOUS="awsscore" NEXT="countfaces"/>
+                <FIELD NAME="countfaces" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
+                       SEQUENCE="false" COMMENT="Cantidad de rostros" PREVIOUS="awsflag" NEXT="validateface"/>
+                <FIELD NAME="validateface" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
+                       SEQUENCE="false" COMMENT="Foto validada" PREVIOUS="countfaces" NEXT="storageimage"/>
+                <FIELD NAME="storageimage" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
+                       SEQUENCE="false" COMMENT="Foto entregada" PREVIOUS="validateface" NEXT="deletionprogress"/>
                 <FIELD NAME="deletionprogress" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
-                       SEQUENCE="false" COMMENT="Progress of deletion process" PREVIOUS="awsflag" NEXT="timemodified"/>      
+                       SEQUENCE="false" COMMENT="Progress of deletion process" PREVIOUS="storageimage" NEXT="timemodified"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false"
-                       COMMENT="Validation process date and time" PREVIOUS="status"/>
+                       COMMENT="Validation process date and time" PREVIOUS="deletionprogress"/>
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="quizid"/>
@@ -105,6 +111,51 @@
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
+
+        <TABLE NAME="rekognition_data" COMMENT="Guarda los resultados de rekognition">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="userid"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="User id" PREVIOUS="id" NEXT="quizaccessproctoringlogid"/>
+                <FIELD NAME="quizaccessproctoringlogid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0"
+                       SEQUENCE="false" COMMENT="Id proctoringlogs" PREVIOUS="userid" NEXT="similarity"/>
+                <FIELD NAME="similarity" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Grado de similitud" PREVIOUS="quizaccessproctoringlogid" NEXT="eyeleftx"/>
+                <FIELD NAME="eyeleftx" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion X del ojo izquierdo" PREVIOUS="similarity" NEXT="eyelefty"/>
+                <FIELD NAME="eyelefty" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion Y del ojo izquierdo" PREVIOUS="eyeleftx" NEXT="eyerightx"/>
+                <FIELD NAME="eyerightx" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion X del ojo derecho" PREVIOUS="eyelefty" NEXT="eyerighty"/>
+                <FIELD NAME="eyerighty" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion Y del ojo derecho" PREVIOUS="eyerightx" NEXT="mouthleftx"/>
+                <FIELD NAME="mouthleftx" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion X del lado izquierdo de la boca" PREVIOUS="eyerighty" NEXT="mouthlefty"/>
+                <FIELD NAME="mouthlefty" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion Y del lado izquierdo de la boca" PREVIOUS="mouthleftx" NEXT="mouthrightx"/>
+                <FIELD NAME="mouthrightx" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion X del lado derecho de la boca" PREVIOUS="mouthlefty" NEXT="mouthrighty"/>
+                <FIELD NAME="mouthrighty" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion Y del lado derecho de la boca" PREVIOUS="mouthrightx" NEXT="nosex"/>
+                <FIELD NAME="nosex" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion X de la nariz" PREVIOUS="mouthrighty" NEXT="nosey"/>
+                <FIELD NAME="nosey" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Posicion Y de la nariz" PREVIOUS="nosex" NEXT="brightness"/>
+                <FIELD NAME="brightness" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Brillo de la imagen" PREVIOUS="nosey" NEXT="sharpness"/>
+                <FIELD NAME="sharpness" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
+                       COMMENT="Nitidez de la imagen" PREVIOUS="brightness" NEXT="rekognitiondata"/>
+                <FIELD NAME="rekognitiondata" TYPE="text" NOTNULL="true" UNSIGNED="false" SEQUENCE="false"
+                       COMMENT="Json de respuesta" PREVIOUS="sharpness" NEXT="timemodified"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false"
+                       COMMENT="Fecha y hora de modificacion" PREVIOUS="rekognitiondata"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="quizaccessproctoringlogid"/>
+                <KEY NAME="quizaccessproctoringlogid" TYPE="foreign-unique" FIELDS="quizaccessproctoringlogid"
+                     REFTABLE="quizaccess_proctoring_logs" REFFIELDS="id" PREVIOUS="primary"/>
             </KEYS>
         </TABLE>
 
