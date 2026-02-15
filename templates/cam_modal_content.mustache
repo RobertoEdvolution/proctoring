@@ -15,9 +15,7 @@
     Example context (json):
     {
         'header' => 'Proctoring Setup',
-        'proctoringstatement' => 'Statement regarding proctoring policies.',
-        'videonotavailable' => 'Your browser does not support video.',
-        'photoalt' => 'Captured Photo for Verification'
+        'proctoringstatement' => 'Statement regarding proctoring policies.'
     }
 }}
 
@@ -37,30 +35,6 @@
             {{#proctoringstatement}}
                 {{{proctoringstatement}}}
             {{/proctoringstatement}}
-        </div>
-    </div>
-
-    <!-- Video and Canvas Section -->
-    <div class="row">
-        <div class="col">
-            <div class="container-fluid">
-                <div class="row justify-content-center align-items-center">
-                    <div class="col-12 bg-light border rounded p-3">
-                        <video 
-                            id="video" 
-                            class="img-fluid bg-dark proctoring-video-modal">
-                            {{#videonotavailable}}
-                                {{{videonotavailable}}}
-                            {{/videonotavailable}}
-                        </video>
-                    </div>
-                </div>
-            </div>
-            <canvas id="canvas" class="d-none"></canvas>
-            <img 
-                id="photo" 
-                class="d-none mt-3 img-fluid"
-                alt="{{photoalt}}" />
         </div>
     </div>
 </div>
