@@ -230,6 +230,67 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                         // Camera not available, exam continues without captures.
                     });
 
+                // Audio recording — optional, exam continues if microphone is denied.
+                if (typeof MediaRecorder !== 'undefined') {
+                    navigator.mediaDevices.getUserMedia({audio: true, video: false})
+                        // eslint-disable-next-line promise/always-return
+                        .then(function(audioStream) {
+                            const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', ''].find(
+                                function(t) { return t === '' || MediaRecorder.isTypeSupported(t); }
+                            );
+                            const recorderOptions = mimeType ? {mimeType} : {};
+                            const mediaRecorder = new MediaRecorder(audioStream, recorderOptions);
+                            let audioChunkIndex = 0;
+
+                            const captureChunk = function() {
+                                if (mediaRecorder.state === 'recording') {
+                                    return; // Previous chunk still recording, skip.
+                                }
+                                const chunks = [];
+                                mediaRecorder.ondataavailable = function(e) {
+                                    if (e.data && e.data.size > 0) {
+                                        chunks.push(e.data);
+                                    }
+                                };
+                                mediaRecorder.onstop = function() {
+                                    if (chunks.length === 0) {
+                                        return;
+                                    }
+                                    const blob = new Blob(chunks, {type: mediaRecorder.mimeType || 'audio/webm'});
+                                    const reader = new FileReader();
+                                    const currentIndex = audioChunkIndex++;
+                                    reader.onloadend = function() {
+                                        Ajax.call([{
+                                            methodname: 'quizaccess_proctoring_send_audio_chunk',
+                                            args: {
+                                                'courseid': props.courseid,
+                                                'quizid': props.quizid,
+                                                'attemptid': props.id,
+                                                'chunkindex': currentIndex,
+                                                'audiodata': reader.result,
+                                                'mimetype': mediaRecorder.mimeType || 'audio/webm',
+                                            }
+                                        }])[0].fail(Notification.exception);
+                                    };
+                                    reader.readAsDataURL(blob);
+                                };
+                                mediaRecorder.start();
+                                setTimeout(function() {
+                                    if (mediaRecorder.state === 'recording') {
+                                        mediaRecorder.stop();
+                                    }
+                                }, props.audiochunkduration);
+                            };
+
+                            // First capture after one full interval, then repeat.
+                            setTimeout(captureChunk, props.audiocaptureinterval);
+                            setInterval(captureChunk, props.audiocaptureinterval);
+                        })
+                        .catch(function() {
+                            // Microphone not available or denied, exam continues without audio.
+                        });
+                }
+
                 if (video) {
                     video.addEventListener('canplay', function() {
                         if (!streaming) {

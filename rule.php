@@ -418,11 +418,15 @@ class quizaccess_proctoring extends quizaccess_proctoring_parent_class_alias {
             // Retrieve screenshot delay and image width settings.
             $camshotdelay = (int)get_config('quizaccess_proctoring', 'autoreconfigurecamshotdelay') * 1000 ?: 30000;
             $imagewidth = (int)get_config('quizaccess_proctoring', 'autoreconfigureimagewidth') ?: 230;
+            $audiochunkduration = (int)get_config('quizaccess_proctoring', 'audiochunkduration') * 1000 ?: 30000;
+            $audiocaptureinterval = (int)get_config('quizaccess_proctoring', 'audiocaptureinterval') * 1000 ?: 60000;
 
             // Add additional data to the record.
             $quizurl = new moodle_url('/mod/quiz/view.php', ['id' => $cmid]);
             $record->camshotdelay = $camshotdelay;
             $record->image_width = $imagewidth;
+            $record->audiochunkduration = $audiochunkduration;
+            $record->audiocaptureinterval = $audiocaptureinterval;
             $record->quizurl = $quizurl->out();
 
             // Configure face model URL and include JS.

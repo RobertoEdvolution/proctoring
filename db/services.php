@@ -41,6 +41,17 @@ $functions = [
         'services'     => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ],
 
+    // Send an audio chunk recorded during a quiz attempt.
+    'quizaccess_proctoring_send_audio_chunk' => [
+        'classname'    => 'quizaccess_proctoring_external',
+        'methodname'   => 'send_audio_chunk',
+        'description'  => 'Send an audio chunk recorded during a quiz attempt.',
+        'type'         => 'write',
+        'ajax'         => true,
+        'capabilities' => 'quizaccess/proctoring:sendcamshot',
+        'services'     => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+
     // Send a camera snapshot to validate the face.
     'quizaccess_proctoring_validate_face' => [
         'classname'    => 'quizaccess_proctoring_external',

@@ -214,6 +214,131 @@ class quizaccess_proctoring_external extends external_api {
         );
     }
     /**
+     * Defines parameters for send_audio_chunk.
+     *
+     * @return external_function_parameters
+     */
+    public static function send_audio_chunk_parameters() {
+        return new external_function_parameters(
+            [
+                'courseid'   => new external_value(PARAM_INT,  'course id'),
+                'quizid'     => new external_value(PARAM_INT,  'quiz cm id'),
+                'attemptid'  => new external_value(PARAM_INT,  'attempt log id'),
+                'chunkindex' => new external_value(PARAM_INT,  'sequential chunk number'),
+                'audiodata'  => new external_value(PARAM_RAW,  'base64-encoded audio data URL'),
+                'mimetype'   => new external_value(PARAM_TEXT, 'audio mime type reported by browser'),
+            ]
+        );
+    }
+
+    /**
+     * Store a base64-encoded audio chunk in Moodle file storage and log it.
+     *
+     * @param int    $courseid   The course ID.
+     * @param int    $quizid     The quiz course-module ID.
+     * @param int    $attemptid  The log entry ID that groups chunks for an attempt.
+     * @param int    $chunkindex Sequential order of the chunk within the attempt.
+     * @param string $audiodata  Base64 data URL of the audio blob.
+     * @param string $mimetype   MIME type string (e.g. audio/webm;codecs=opus).
+     * @return array audioid and warnings.
+     */
+    public static function send_audio_chunk($courseid, $quizid, $attemptid, $chunkindex, $audiodata, $mimetype) {
+        global $DB, $USER;
+
+        self::validate_parameters(
+            self::send_audio_chunk_parameters(),
+            [
+                'courseid'   => $courseid,
+                'quizid'     => $quizid,
+                'attemptid'  => $attemptid,
+                'chunkindex' => $chunkindex,
+                'audiodata'  => $audiodata,
+                'mimetype'   => $mimetype,
+            ]
+        );
+
+        $context = context_course::instance($courseid);
+        if (
+            !is_enrolled($context, $USER->id, 'mod/quiz:attempt') &&
+            !has_capability('mod/quiz:grade', $context)
+        ) {
+            throw new moodle_exception(
+                'accessdenied', 'quizaccess_proctoring', '', null,
+                get_string('notenrolled', 'quizaccess_proctoring')
+            );
+        }
+
+        // Determine file extension from mime type (e.g. audio/webm -> webm, audio/mp4 -> mp4).
+        $basemime = explode(';', $mimetype)[0]; // Strip codec parameters.
+        $ext = explode('/', $basemime)[1] ?? 'webm';
+        $ext = preg_replace('/[^a-z0-9]/', '', strtolower($ext));
+        if (!$ext) {
+            $ext = 'webm';
+        }
+
+        // Decode base64 data URL (format: data:<mime>;base64,<data>).
+        if (strpos($audiodata, ',') !== false) {
+            list(, $rawb64) = explode(',', $audiodata, 2);
+        } else {
+            $rawb64 = $audiodata;
+        }
+        $filedata = base64_decode($rawb64);
+
+        $filename = 'audio-' . $attemptid . '-' . $USER->id . '-' . $chunkindex . '-' . time() . '.' . $ext;
+
+        $modulecontext = context_module::instance($quizid);
+        $fs = get_file_storage();
+
+        $filerecord = [
+            'contextid' => $modulecontext->id,
+            'component' => 'quizaccess_proctoring',
+            'filearea'  => 'audio',
+            'itemid'    => $attemptid,
+            'filepath'  => '/',
+            'filename'  => $filename,
+            'userid'    => $USER->id,
+        ];
+
+        $fs->create_file_from_string($filerecord, $filedata);
+
+        $url = moodle_url::make_pluginfile_url(
+            $modulecontext->id,
+            'quizaccess_proctoring',
+            'audio',
+            $attemptid,
+            '/',
+            $filename,
+            false
+        );
+
+        $record = new stdClass();
+        $record->courseid    = $courseid;
+        $record->quizid      = $quizid;
+        $record->userid      = $USER->id;
+        $record->attemptid   = $attemptid;
+        $record->chunkindex  = $chunkindex;
+        $record->audiofile   = $url->out(false);
+        $record->timemodified = time();
+        $audioid = $DB->insert_record('quizaccess_proctoring_audio_logs', $record, true);
+
+        return ['audioid' => $audioid, 'warnings' => []];
+    }
+
+    /**
+     * Return structure for send_audio_chunk.
+     *
+     * @return external_single_structure
+     */
+    public static function send_audio_chunk_returns() {
+        return new external_single_structure(
+            [
+                'audioid'  => new external_value(PARAM_INT, 'id of the stored audio log entry'),
+                'warnings' => new external_warnings(),
+            ]
+        );
+    }
+
+    /**
      * Adds a timestamp to the captured image.
      *
      * This function takes an image in raw data format, adds a timestamp in the
