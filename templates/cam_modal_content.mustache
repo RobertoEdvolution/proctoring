@@ -14,35 +14,36 @@
     @template quizaccess_proctoring/proctoring_page
     Example context (json):
     {
-        'header' => 'Proctoring Setup',
-        'proctoringstatement' => 'Statement regarding proctoring policies.'
+        "proctoringstatement": "Este examen requiere acceso a tu cámara web y micrófono."
     }
 }}
 
-<div class="container">
-    <!-- Header Section -->
-    <div class="row">
-        <div class="col font-weight-bold">
-            {{#header}}
-                * {{{header}}}
-            {{/header}}
-        </div>
+<div class="proctoring-preflight-wrap">
+
+    {{! Icon banner }}
+    <div class="proctoring-preflight-banner">
+        <span class="proctoring-preflight-badge">
+            <i class="fa fa-video-camera" aria-hidden="true"></i>
+        </span>
+        <span class="proctoring-preflight-badge">
+            <i class="fa fa-microphone" aria-hidden="true"></i>
+        </span>
     </div>
 
-    <!-- Proctoring Statement Section -->
-    <div class="row">
-        <div class="col font-weight-bold">
-            {{#proctoringstatement}}
-                {{{proctoringstatement}}}
-            {{/proctoringstatement}}
-        </div>
-    </div>
+    {{! Statement }}
+    {{#proctoringstatement}}
+    <p class="proctoring-preflight-statement">{{{proctoringstatement}}}</p>
+    {{/proctoringstatement}}
 
-    <!-- Camera and microphone preview -->
-    <div class="row mt-2">
-        <div class="col">
+    {{! Camera preview + mic indicator }}
+    <div class="proctoring-preflight-media">
+        <div class="proctoring-preflight-video-ring">
             <video id="proctoring-preflight-video" autoplay playsinline muted></video>
-            <div id="proctoring-media-status" class="mt-2"></div>
+            <div class="proctoring-preflight-mic-badge">
+                <i class="fa fa-microphone" aria-hidden="true"></i>
+            </div>
         </div>
+        <div id="proctoring-media-status"></div>
     </div>
+
 </div>
