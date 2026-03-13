@@ -111,7 +111,9 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                     + `<video id="video">${strings.videonotavailable}</video>`
                     + '<img id="cropimg" src="" alt=""/><canvas id="canvas" style="display:none;"></canvas>'
                     + '<div class="output" style="display:none;">'
-                    + '<img id="photo" alt="The picture will appear in this box."/></div></div>');
+                    + '<img id="photo" alt="The picture will appear in this box."/></div></div>'
+                    + '<div id="proctoring-audio-indicator">'
+                    + '<span class="proctoring-rec-dot"></span>REC</div>');
 
                 const video = document.getElementById('video');
                 const canvas = document.getElementById('canvas');
@@ -227,7 +229,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                         video.play();
                     })
                     .catch(function() {
-                        // Camera not available, exam continues without captures.
+                        showNotification(strings.enablewebcamerabeforesubmitting, 'error');
                     });
 
                 // Audio recording — optional, exam continues if microphone is denied.
@@ -235,12 +237,22 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                     navigator.mediaDevices.getUserMedia({audio: true, video: false})
                         // eslint-disable-next-line promise/always-return
                         .then(function(audioStream) {
+                            const audioIndicator = document.getElementById('proctoring-audio-indicator');
+                            if (audioIndicator) {
+                                audioIndicator.style.display = 'flex';
+                            }
                             const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', ''].find(
                                 function(t) { return t === '' || MediaRecorder.isTypeSupported(t); }
                             );
                             const recorderOptions = mimeType ? {mimeType} : {};
                             const mediaRecorder = new MediaRecorder(audioStream, recorderOptions);
                             let audioChunkIndex = 0;
+
+                            const hideAudioIndicator = function() {
+                                if (audioIndicator) {
+                                    audioIndicator.style.display = 'none';
+                                }
+                            };
 
                             const captureChunk = function() {
                                 if (mediaRecorder.state === 'recording') {
@@ -253,6 +265,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                                     }
                                 };
                                 mediaRecorder.onstop = function() {
+                                    hideAudioIndicator();
                                     if (chunks.length === 0) {
                                         return;
                                     }
@@ -274,6 +287,9 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                                     };
                                     reader.readAsDataURL(blob);
                                 };
+                                if (audioIndicator) {
+                                    audioIndicator.style.display = 'flex';
+                                }
                                 mediaRecorder.start();
                                 setTimeout(function() {
                                     if (mediaRecorder.state === 'recording') {
@@ -287,7 +303,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                             setInterval(captureChunk, props.audiocaptureinterval);
                         })
                         .catch(function() {
-                            // Microphone not available or denied, exam continues without audio.
+                            showNotification(strings.wrongduringtakingimage, 'error');
                         });
                 }
 

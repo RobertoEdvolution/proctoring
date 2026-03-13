@@ -1,5 +1,5 @@
-define(['jquery', 'core/ajax', 'core/notification'],
-    function($, Ajax, Notification) {
+define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
+    function($, Ajax, Notification, Str) {
 
         /**
          * Extract a face region from an image using bounding box coordinates.
@@ -48,15 +48,56 @@ define(['jquery', 'core/ajax', 'core/notification'],
             /**
              * Setup face validation for quiz attempt start.
              *
-             * Loads the face-api model, captures a webcam frame on button click,
-             * detects and extracts the face, then validates it against the profile image
-             * via the quizaccess_proctoring_validate_face web service.
+             * Requests camera and microphone access (both mandatory). Disables the consent
+             * checkbox until both permissions are granted. Optionally loads the face-api model
+             * and validates the student's face against the profile image.
              *
              * @param {object} props Configuration properties including imagewidth.
              * @param {string|null} modelurl URL to the face-api model files, or null to skip face detection.
              * @returns {boolean} True on successful setup.
              */
             setup: async function(props, modelurl) {
+                const strings = await Str.get_strings([
+                    {key: 'info:cameraandmicready', component: 'quizaccess_proctoring'},
+                    {key: 'warning:cameraandmicdenied', component: 'quizaccess_proctoring'},
+                ]);
+                const strReady = strings[0];
+                const strDenied = strings[1];
+
+                // Disable the consent checkbox until both camera and microphone are granted.
+                const checkbox = document.getElementById('id_proctoring');
+                if (checkbox) {
+                    checkbox.disabled = true;
+                }
+
+                const statusEl = document.getElementById('proctoring-media-status');
+                const showStatus = function(message, type) {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<div class="alert alert-' + type + ' py-2 mb-1 small">'
+                            + message + '</div>';
+                    }
+                };
+
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({video: true, audio: true})
+                        // eslint-disable-next-line promise/always-return
+                        .then(function(stream) {
+                            const previewVideo = document.getElementById('proctoring-preflight-video');
+                            if (previewVideo) {
+                                previewVideo.srcObject = stream;
+                            }
+                            showStatus(strReady, 'success');
+                            if (checkbox) {
+                                checkbox.disabled = false;
+                            }
+                        })
+                        .catch(function() {
+                            showStatus(strDenied, 'danger');
+                        });
+                } else {
+                    showStatus(strDenied, 'danger');
+                }
+
                 if (modelurl != null) {
                     // eslint-disable-next-line no-undef
                     await faceapi.nets.ssdMobilenetv1.loadFromUri(modelurl);

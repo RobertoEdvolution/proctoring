@@ -447,6 +447,59 @@ body.proctoring-lb-disable-scrolling {
     }
 }
 
+#proctoring-audio-indicator {
+    position: fixed;
+    bottom: 26px;
+    right: 70px;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.6px;
+    padding: 3px 8px 3px 6px;
+    border-radius: 10px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.proctoring-rec-dot {
+    width: 7px;
+    height: 7px;
+    background: #e53935;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: proctoring-rec-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes proctoring-rec-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+}
+
+@media (max-width: 768px) {
+    #proctoring-audio-indicator {
+        bottom: 16px;
+        right: 46px;
+        font-size: 9px;
+        padding: 2px 6px 2px 5px;
+    }
+}
+
+/* Preflight camera/mic preview */
+#proctoring-preflight-video {
+    width: 160px;
+    height: 120px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    display: block;
+    object-fit: cover;
+    border: 2px solid #dee2e6;
+}
+
 #quizaccess_proctoring_user_table > thead > tr > th:first-child {
     display: flex;
     align-items: center;
