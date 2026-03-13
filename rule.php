@@ -370,7 +370,6 @@ class quizaccess_proctoring extends quizaccess_proctoring_parent_class_alias {
         // Messages for the quiz view page.
         $messages = [
             get_string('proctoringheader', 'quizaccess_proctoring'),
-            $this->get_download_config_button(),
         ];
 
         return $messages;

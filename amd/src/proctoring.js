@@ -241,12 +241,26 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                 blockOverlay.style.display = 'none';
                 document.body.appendChild(blockOverlay);
 
+                // Track how many getUserMedia calls are still pending.
+                // Only activate blocking once all have settled to avoid startup flicker.
+                let pendingChecks = typeof MediaRecorder !== 'undefined' ? 2 : 1;
+
                 const checkDevices = function() {
+                    if (pendingChecks > 0) {
+                        return; // Still waiting for devices to initialise.
+                    }
                     if (!deviceState.camera || !deviceState.mic) {
                         blockOverlay.style.display = 'flex';
                     } else {
                         blockOverlay.style.display = 'none';
                     }
+                };
+
+                const mediaSettled = function() {
+                    if (pendingChecks > 0) {
+                        pendingChecks--;
+                    }
+                    checkDevices();
                 };
 
                 // Periodically verify tracks are still live (fallback for onended).
@@ -266,7 +280,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                         video.srcObject = stream;
                         video.play();
                         deviceState.camera = true;
-                        checkDevices();
+                        mediaSettled();
                         const vTrack = stream.getVideoTracks()[0];
                         if (vTrack) {
                             vTrack.onended = function() {
@@ -277,7 +291,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                     })
                     .catch(function() {
                         deviceState.camera = false;
-                        checkDevices();
+                        mediaSettled();
                     });
 
                 // Audio recording — microphone required.
@@ -286,7 +300,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                         // eslint-disable-next-line promise/always-return
                         .then(function(audioStream) {
                             deviceState.mic = true;
-                            checkDevices();
+                            mediaSettled();
                             const aTrack = audioStream.getAudioTracks()[0];
                             if (aTrack) {
                                 aTrack.onended = function() {
@@ -361,7 +375,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                         })
                         .catch(function() {
                             deviceState.mic = false;
-                            checkDevices();
+                            mediaSettled();
                         });
                 }
 
