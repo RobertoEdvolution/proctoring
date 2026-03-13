@@ -72,6 +72,7 @@ $string['image_updated'] = 'Image updated';
 $string['image_upload'] = 'Upload image';
 $string['info:cameraallow'] = 'Your camera is now in use.';
 $string['info:cameraandmicready'] = 'Camera and microphone are ready. You may proceed.';
+$string['warning:devicerequired'] = 'Camera and microphone are required to continue the exam. Please re-enable them in your browser to proceed.';
 $string['warning:cameraandmicdenied'] = 'Camera and microphone access is required to start the exam. Please allow access in your browser settings and reload the page.';
 $string['initiate_facematch_task'] = 'Initiate face match task';
 $string['initiate_facematch_task_desc'] = 'Initiates a face match task to compare images for proctoring verification.';

@@ -10,6 +10,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                 {key: 'enable_web_camera_before_submitting', component: 'quizaccess_proctoring'},
                 {key: 'webcam', component: 'quizaccess_proctoring'},
                 {key: 'videonotavailable', component: 'quizaccess_proctoring'},
+                {key: 'warning:devicerequired', component: 'quizaccess_proctoring'},
             ];
             try {
                 const strings = await Str.get_strings(stringkeys);
@@ -20,6 +21,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                     enablewebcamerabeforesubmitting: strings[3],
                     webcam: strings[4],
                     videonotavailable: strings[5],
+                    devicerequired: strings[6],
                 };
             } catch (error) {
                 Notification.exception(error);
@@ -222,21 +224,76 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                     }
                 };
 
+                // Device state: mic starts as OK if MediaRecorder is unsupported (can't check).
+                const deviceState = {
+                    camera: false,
+                    mic: typeof MediaRecorder === 'undefined',
+                };
+
+                // Blocking overlay — covers the quiz when a required device is unavailable.
+                const blockOverlay = document.createElement('div');
+                blockOverlay.id = 'proctoring-device-block';
+                blockOverlay.innerHTML =
+                    '<div class="proctoring-device-block-box">'
+                    + '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i>'
+                    + '<p>' + strings.devicerequired + '</p>'
+                    + '</div>';
+                blockOverlay.style.display = 'none';
+                document.body.appendChild(blockOverlay);
+
+                const checkDevices = function() {
+                    if (!deviceState.camera || !deviceState.mic) {
+                        blockOverlay.style.display = 'flex';
+                    } else {
+                        blockOverlay.style.display = 'none';
+                    }
+                };
+
+                // Periodically verify tracks are still live (fallback for onended).
+                setInterval(function() {
+                    if (video && video.srcObject) {
+                        const vTracks = video.srcObject.getVideoTracks();
+                        if (vTracks.length === 0 || vTracks[0].readyState === 'ended') {
+                            deviceState.camera = false;
+                        }
+                    }
+                    checkDevices();
+                }, 3000);
+
                 navigator.mediaDevices.getUserMedia({video: true, audio: false})
                     // eslint-disable-next-line promise/always-return
                     .then(function(stream) {
                         video.srcObject = stream;
                         video.play();
+                        deviceState.camera = true;
+                        checkDevices();
+                        const vTrack = stream.getVideoTracks()[0];
+                        if (vTrack) {
+                            vTrack.onended = function() {
+                                deviceState.camera = false;
+                                checkDevices();
+                            };
+                        }
                     })
                     .catch(function() {
-                        showNotification(strings.enablewebcamerabeforesubmitting, 'error');
+                        deviceState.camera = false;
+                        checkDevices();
                     });
 
-                // Audio recording — optional, exam continues if microphone is denied.
+                // Audio recording — microphone required.
                 if (typeof MediaRecorder !== 'undefined') {
                     navigator.mediaDevices.getUserMedia({audio: true, video: false})
                         // eslint-disable-next-line promise/always-return
                         .then(function(audioStream) {
+                            deviceState.mic = true;
+                            checkDevices();
+                            const aTrack = audioStream.getAudioTracks()[0];
+                            if (aTrack) {
+                                aTrack.onended = function() {
+                                    deviceState.mic = false;
+                                    checkDevices();
+                                };
+                            }
                             const audioIndicator = document.getElementById('proctoring-audio-indicator');
                             if (audioIndicator) {
                                 audioIndicator.style.display = 'flex';
@@ -303,7 +360,8 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'],
                             setInterval(captureChunk, props.audiocaptureinterval);
                         })
                         .catch(function() {
-                            showNotification(strings.wrongduringtakingimage, 'error');
+                            deviceState.mic = false;
+                            checkDevices();
                         });
                 }
 

@@ -33,6 +33,7 @@ $string['proctoringheader'] = '<strong>Este cuestionario utiliza supervisión. S
 // Camera / microphone status messages.
 $string['info:cameraallow'] = 'Tu cámara está en uso.';
 $string['info:cameraandmicready'] = 'Cámara y micrófono listos. Ya puedes continuar.';
+$string['warning:devicerequired'] = 'Se requieren cámara y micrófono para continuar el examen. Por favor, vuelve a activarlos en tu navegador para poder continuar.';
 $string['warning:cameraallowwarning'] = 'Por favor, permite el acceso a la cámara.';
 $string['warning:cameraandmicdenied'] = 'Se requiere acceso a la cámara y el micrófono para iniciar el examen. Permite el acceso en la configuración de tu navegador y recarga la página.';
 
