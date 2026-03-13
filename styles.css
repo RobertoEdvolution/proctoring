@@ -495,32 +495,6 @@ body.proctoring-lb-disable-scrolling {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Gradient banner with device icons */
-.proctoring-preflight-banner {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    background: linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%);
-    border-radius: 10px;
-    padding: 18px 24px;
-    margin-bottom: 16px;
-}
-
-.proctoring-preflight-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    border-radius: 50%;
-    color: #fff;
-    font-size: 22px;
-    backdrop-filter: blur(4px);
-}
-
 /* Statement text */
 .proctoring-preflight-statement {
     font-size: 0.92rem;
