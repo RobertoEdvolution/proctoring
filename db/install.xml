@@ -146,9 +146,15 @@
                 <FIELD NAME="brightness" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
                        COMMENT="Brillo de la imagen" PREVIOUS="nosey" NEXT="sharpness"/>
                 <FIELD NAME="sharpness" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0.00" SEQUENCE="false"
-                       COMMENT="Nitidez de la imagen" PREVIOUS="brightness" NEXT="rekognitiondata"/>
+                       COMMENT="Nitidez de la imagen" PREVIOUS="brightness" NEXT="countfaces"/>
+                <FIELD NAME="countfaces" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Cantidad de rostros detectados" PREVIOUS="sharpness" NEXT="flagged"/>
+                <FIELD NAME="flagged" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Imagen marcada como sospechosa (1 si, 0 no)" PREVIOUS="countfaces" NEXT="flagreason"/>
+                <FIELD NAME="flagreason" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                       COMMENT="Razon del flag (sin rostro, multiples rostros, baja similitud)" PREVIOUS="flagged" NEXT="rekognitiondata"/>
                 <FIELD NAME="rekognitiondata" TYPE="text" NOTNULL="true" UNSIGNED="false" SEQUENCE="false"
-                       COMMENT="Json de respuesta" PREVIOUS="sharpness" NEXT="timemodified"/>
+                       COMMENT="Json de respuesta" PREVIOUS="flagreason" NEXT="timemodified"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false"
                        COMMENT="Fecha y hora de modificacion" PREVIOUS="rekognitiondata"/>
             </FIELDS>
@@ -179,6 +185,43 @@
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
+
+        <TABLE NAME="quizaccess_proctoring_audio_analysis" COMMENT="Stores GCP Speech-to-Text analysis results for audio chunks">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="audiologid"/>
+                <FIELD NAME="audiologid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" SEQUENCE="false"
+                       COMMENT="FK to quizaccess_proctoring_audio_logs.id" PREVIOUS="id" NEXT="attemptid"/>
+                <FIELD NAME="attemptid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Log entry id that groups chunks per attempt" PREVIOUS="audiologid" NEXT="userid"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="User id" PREVIOUS="attemptid" NEXT="quizid"/>
+                <FIELD NAME="quizid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Quiz cm id" PREVIOUS="userid" NEXT="speakersdetected"/>
+                <FIELD NAME="speakersdetected" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Number of distinct speakers detected" PREVIOUS="quizid" NEXT="transcript"/>
+                <FIELD NAME="transcript" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                       COMMENT="Full transcription of the audio chunk" PREVIOUS="speakersdetected" NEXT="speakersegments"/>
+                <FIELD NAME="speakersegments" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                       COMMENT="JSON with per-speaker detail (word count, duration, sample text)" PREVIOUS="transcript" NEXT="confidenceavg"/>
+                <FIELD NAME="confidenceavg" TYPE="float" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Average transcription confidence (0 to 1)" PREVIOUS="speakersegments" NEXT="hasspeech"/>
+                <FIELD NAME="hasspeech" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Whether speech was detected (1 yes, 0 no)" PREVIOUS="confidenceavg" NEXT="flagged"/>
+                <FIELD NAME="flagged" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"
+                       COMMENT="Whether the chunk was flagged as suspicious (1 yes, 0 no)" PREVIOUS="hasspeech" NEXT="flagreason"/>
+                <FIELD NAME="flagreason" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                       COMMENT="Reason for flagging (e.g. multiple speakers)" PREVIOUS="flagged" NEXT="gcpresponse"/>
+                <FIELD NAME="gcpresponse" TYPE="text" NOTNULL="false" SEQUENCE="false"
+                       COMMENT="Raw JSON response from GCP Speech-to-Text" PREVIOUS="flagreason" NEXT="timecreated"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false"
+                       COMMENT="Timestamp when the analysis was performed" PREVIOUS="gcpresponse"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="audiologid"/>
+                <KEY NAME="audiologid" TYPE="foreign-unique" FIELDS="audiologid"
+                     REFTABLE="quizaccess_proctoring_audio_logs" REFFIELDS="id" PREVIOUS="primary"/>
             </KEYS>
         </TABLE>
 

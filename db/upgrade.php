@@ -284,5 +284,56 @@ function xmldb_quizaccess_proctoring_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026031100, 'quizaccess', 'proctoring');
     }
 
+    if ($oldversion < 2026032800) {
+        // Create quizaccess_proctoring_audio_analysis table.
+        $table = new xmldb_table('quizaccess_proctoring_audio_analysis');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('audiologid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('attemptid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('quizid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('speakersdetected', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('transcript', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('speakersegments', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('confidenceavg', XMLDB_TYPE_FLOAT, null, null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('hasspeech', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('flagged', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('flagreason', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('gcpresponse', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('audiologid', XMLDB_KEY_FOREIGN_UNIQUE,
+            ['audiologid'], 'quizaccess_proctoring_audio_logs', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026032800, 'quizaccess', 'proctoring');
+    }
+
+    if ($oldversion < 2026032801) {
+        // Add countfaces, flagged and flagreason fields to rekognition_data.
+        $table = new xmldb_table('rekognition_data');
+
+        $field1 = new xmldb_field('countfaces', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sharpness');
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+
+        $field2 = new xmldb_field('flagged', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'countfaces');
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        $field3 = new xmldb_field('flagreason', XMLDB_TYPE_TEXT, null, null, null, null, null, 'flagged');
+        if (!$dbman->field_exists($table, $field3)) {
+            $dbman->add_field($table, $field3);
+        }
+
+        upgrade_plugin_savepoint(true, 2026032801, 'quizaccess', 'proctoring');
+    }
+
     return true;
 }
