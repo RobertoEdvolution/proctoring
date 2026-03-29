@@ -17,9 +17,6 @@
 /**
  * Observer for the quizaccess_proctoring plugin.
  *
- * This class listens for events related to quiz attempts, such as starting or submitting a quiz attempt.
- * It also handles specific actions related to proctoring events like taking a screenshot and updating logs.
- *
  * @package    quizaccess_proctoring
  * @copyright  2024 Brain Station 23
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -30,8 +27,8 @@ namespace quizaccess_proctoring;
 /**
  * quizaccess_proctoring_observer class.
  *
- * This class defines the observer methods that handle specific quiz events like attempt start and attempt submission.
- * It also handles proctoring actions such as taking screenshots and updating related logs.
+ * Handles quiz events like attempt start and submission.
+ * On submission, triggers the Cloud Run analysis service.
  *
  * @package    quizaccess_proctoring
  * @copyright  2020 Brain Station 23
@@ -41,9 +38,7 @@ class quizaccess_proctoring_observer {
     /**
      * Handle the event when a quiz attempt is started.
      *
-     * This method listens to the quiz attempt start event and updates the proctoring event data.
-     *
-     * @param \mod_quiz\event\attempt_started $event The event object representing the quiz attempt start.
+     * @param \mod_quiz\event\attempt_started $event The event object.
      * @return void
      */
     public static function handle_quiz_attempt_started(\mod_quiz\event\attempt_started $event) {
@@ -53,21 +48,20 @@ class quizaccess_proctoring_observer {
     /**
      * Handle the event when a quiz attempt is submitted.
      *
-     * This method listens to the quiz attempt submission event and updates the proctoring event data.
+     * Triggers the Cloud Run proctoring analysis service if configured.
      *
-     * @param \mod_quiz\event\quiz_attempt_submitted $event The event object representing the quiz attempt submission.
+     * @param \mod_quiz\event\attempt_submitted $event The event object.
      * @return void
      */
-    public static function handle_quiz_attempt_submitted(\mod_quiz\event\quiz_attempt_submitted $event) {
+    public static function handle_quiz_attempt_submitted(\mod_quiz\event\attempt_submitted $event) {
         self::update_event_data($event);
+        self::trigger_analysis($event);
     }
 
     /**
      * Take a screenshot during the proctoring process.
      *
-     * This method listens to the screenshot event and updates the corresponding record in the proctoring logs.
-     *
-     * @param \quizaccess_proctoring\take_screensho $event The event object representing a screenshot action.
+     * @param \quizaccess_proctoring\take_screensho $event The event object.
      * @return void
      */
     public static function take_screenshot(\quizaccess_proctoring\take_screensho $event) {
@@ -79,14 +73,75 @@ class quizaccess_proctoring_observer {
     /**
      * Update logs of proctoring events.
      *
-     * This method updates the proctoring event data in the logs table.
-     *
-     * @param \mod_quiz\event\attempt_started|\mod_quiz\event\quiz_attempt_submitted
-     * $event The event object representing a quiz event.
+     * @param \mod_quiz\event\attempt_started|\mod_quiz\event\attempt_submitted $event The event object.
      * @return void
      */
     private static function update_event_data($event) {
         global $DB;
         $DB->update_record('quizaccess_proctoring_logs', $event);
+    }
+
+    /**
+     * Trigger the Cloud Run analysis service after quiz submission.
+     *
+     * Sends an asynchronous HTTP POST to the configured Cloud Run URL
+     * with the attempt data so images and audio can be analyzed.
+     *
+     * @param \mod_quiz\event\attempt_submitted $event The event object.
+     * @return void
+     */
+    private static function trigger_analysis($event) {
+        $cloudrunurl = get_config('quizaccess_proctoring', 'cloudrun_url');
+        $cloudruntoken = get_config('quizaccess_proctoring', 'cloudrun_token');
+
+        $logprefix = 'quizaccess_proctoring [analysis]: ';
+
+        if (empty($cloudrunurl) || empty($cloudruntoken)) {
+            mtrace($logprefix . 'Skipped - cloudrun_url or cloudrun_token not configured.');
+            error_log($logprefix . 'Skipped - cloudrun_url or cloudrun_token not configured.');
+            return;
+        }
+
+        $eventdata = $event->get_data();
+        $userid = $eventdata['userid'];
+        $quizid = $eventdata['contextinstanceid'];
+        $courseid = $eventdata['courseid'];
+        $attemptid = $eventdata['objectid'];
+
+        error_log($logprefix . "Triggering analysis for userid={$userid} quizid={$quizid} attemptid={$attemptid} url={$cloudrunurl}");
+
+        $payload = json_encode([
+            'token' => $cloudruntoken,
+            'userid' => (int) $userid,
+            'quizid' => (int) $quizid,
+            'courseid' => (int) $courseid,
+            'attemptid' => (int) $attemptid,
+            'moodle_base_url' => (string) (new \moodle_url('/'))->out(false),
+        ]);
+
+        $curl = new \curl();
+        $curl->setopt([
+            'CURLOPT_CONNECTTIMEOUT' => 5,
+            'CURLOPT_TIMEOUT' => 10,
+        ]);
+
+        $response = $curl->post($cloudrunurl, $payload, [
+            'CURLOPT_HTTPHEADER' => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+            ],
+        ]);
+
+        $info = $curl->get_info();
+        $httpcode = $info['http_code'] ?? 0;
+        $curlerror = $curl->get_errno() ? $curl->error : '';
+
+        if ($curlerror) {
+            error_log($logprefix . "CURL ERROR: {$curlerror} for attemptid={$attemptid}");
+        } else if ($httpcode < 200 || $httpcode >= 300) {
+            error_log($logprefix . "HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
+        } else {
+            error_log($logprefix . "SUCCESS HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
+        }
     }
 }

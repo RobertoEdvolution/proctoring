@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for the quizaccess_proctoring plugin.
+ * Event observers for the quizaccess_proctoring plugin.
  *
  * @package    quizaccess_proctoring
  * @copyright  2024 Brain Station 23
@@ -24,8 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'quizaccess_proctoring';
-$plugin->release = '1.7.0';
-$plugin->version = 2026032802;
-$plugin->requires = 2023100900;
-$plugin->maturity = MATURITY_STABLE;
+$observers = [
+    [
+        'eventname' => '\mod_quiz\event\attempt_started',
+        'callback'  => '\quizaccess_proctoring\quizaccess_proctoring_observer::handle_quiz_attempt_started',
+    ],
+    [
+        'eventname' => '\mod_quiz\event\attempt_submitted',
+        'callback'  => '\quizaccess_proctoring\quizaccess_proctoring_observer::handle_quiz_attempt_submitted',
+    ],
+];

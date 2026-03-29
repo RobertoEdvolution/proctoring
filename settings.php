@@ -120,6 +120,21 @@ if ($hassiteconfig) {
         get_string('setting:facematch', 'quizaccess_proctoring'),
         get_string('setting:facematchdesc', 'quizaccess_proctoring'), '', PARAM_INT));
 
+    // Cloud Run analysis settings.
+    $settings->add(new admin_setting_heading(
+        'cloudrun_settings',
+        get_string('setting:cloudrun_heading', 'quizaccess_proctoring'),
+        ''
+    ));
+
+    $settings->add(new admin_setting_configtext('quizaccess_proctoring/cloudrun_url',
+        get_string('setting:cloudrun_url', 'quizaccess_proctoring'),
+        get_string('setting:cloudrun_url_desc', 'quizaccess_proctoring'), '', PARAM_URL));
+
+    $settings->add(new admin_setting_configpasswordunmask('quizaccess_proctoring/cloudrun_token',
+        get_string('setting:cloudrun_token', 'quizaccess_proctoring'),
+        get_string('setting:cloudrun_token_desc', 'quizaccess_proctoring'), '', PARAM_TEXT));
+
     // Checkbox for quiz start face check.
     $settings->add(new admin_setting_configcheckbox('quizaccess_proctoring/fcheckstartchk',
         get_string('settings:fcheckquizstart', 'quizaccess_proctoring'),

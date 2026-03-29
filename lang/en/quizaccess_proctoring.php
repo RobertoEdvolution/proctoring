@@ -181,6 +181,11 @@ $string['reportpage'] = 'Course Proctoring Summary';
 $string['setting:adminimagedescription'] = 'These images will be used as base images for face verification. Please ensure each image contains a clearly visible face.';
 $string['setting:adminimagepage'] = 'Proctoring User List';
 
+$string['setting:cloudrun_heading'] = 'Cloud Run analysis service';
+$string['setting:cloudrun_url'] = 'Cloud Run URL';
+$string['setting:cloudrun_url_desc'] = 'Full URL of the Cloud Run service that analyzes proctoring images and audio (e.g. https://proctoring-analyzer-xxxxx-uc.a.run.app/analyze). Leave empty to disable.';
+$string['setting:cloudrun_token'] = 'Cloud Run authentication token';
+$string['setting:cloudrun_token_desc'] = 'Shared secret token used to authenticate requests to the Cloud Run service.';
 $string['setting:bs_api'] = 'BS service API';
 $string['setting:bs_api_key'] = 'BS API key';
 $string['setting:bs_api_keydesc'] = 'Enter the API key for the BS face-matching service.';
