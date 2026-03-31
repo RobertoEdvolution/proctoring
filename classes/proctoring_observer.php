@@ -94,15 +94,27 @@ class quizaccess_proctoring_observer {
      * @param \mod_quiz\event\attempt_submitted $event The event object.
      * @return void
      */
+    /**
+     * Write a log entry to a dedicated proctoring log file.
+     *
+     * @param string $message The message to log.
+     * @return void
+     */
+    private static function log($message) {
+        global $CFG;
+        $logfile = $CFG->dataroot . '/proctoring_analysis.log';
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($logfile, "[{$timestamp}] {$message}" . PHP_EOL, FILE_APPEND | LOCK_EX);
+    }
+
     private static function trigger_analysis($event) {
         $cloudrunurl = get_config('quizaccess_proctoring', 'cloudrun_url');
         $cloudruntoken = get_config('quizaccess_proctoring', 'cloudrun_token');
 
-        $logprefix = 'quizaccess_proctoring [analysis]: ';
+        self::log('Observer triggered for attempt_submitted event.');
 
         if (empty($cloudrunurl) || empty($cloudruntoken)) {
-            mtrace($logprefix . 'Skipped - cloudrun_url or cloudrun_token not configured.');
-            error_log($logprefix . 'Skipped - cloudrun_url or cloudrun_token not configured.');
+            self::log("Skipped - URL=[{$cloudrunurl}] Token=" . (empty($cloudruntoken) ? 'EMPTY' : 'SET'));
             return;
         }
 
@@ -112,7 +124,7 @@ class quizaccess_proctoring_observer {
         $courseid = $eventdata['courseid'];
         $attemptid = $eventdata['objectid'];
 
-        error_log($logprefix . "Triggering analysis for userid={$userid} quizid={$quizid} attemptid={$attemptid} url={$cloudrunurl}");
+        self::log("Triggering analysis: userid={$userid} quizid={$quizid} attemptid={$attemptid} url={$cloudrunurl}");
 
         $payload = json_encode([
             'token' => $cloudruntoken,
@@ -141,11 +153,11 @@ class quizaccess_proctoring_observer {
         $curlerror = $curl->get_errno() ? $curl->error : '';
 
         if ($curlerror) {
-            error_log($logprefix . "CURL ERROR: {$curlerror} for attemptid={$attemptid}");
+            self::log("CURL ERROR: {$curlerror} for attemptid={$attemptid}");
         } else if ($httpcode < 200 || $httpcode >= 300) {
-            error_log($logprefix . "HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
+            self::log("HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
         } else {
-            error_log($logprefix . "SUCCESS HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
+            self::log("SUCCESS HTTP {$httpcode} for attemptid={$attemptid}. Response: " . substr($response, 0, 500));
         }
     }
 }
