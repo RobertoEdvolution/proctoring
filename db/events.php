@@ -33,4 +33,12 @@ $observers = [
         'eventname' => '\mod_quiz\event\attempt_submitted',
         'callback'  => '\quizaccess_proctoring\quizaccess_proctoring_observer::handle_quiz_attempt_submitted',
     ],
+    [
+        'eventname' => '\mod_quiz\event\attempt_preview_started',
+        'callback'  => '\quizaccess_proctoring\quizaccess_proctoring_observer::handle_quiz_attempt_started',
+    ],
+    [
+        'eventname' => '\mod_quiz\event\attempt_reviewed',
+        'callback'  => '\quizaccess_proctoring\quizaccess_proctoring_observer::handle_quiz_attempt_reviewed',
+    ],
 ];

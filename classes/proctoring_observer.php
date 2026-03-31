@@ -59,6 +59,18 @@ class quizaccess_proctoring_observer {
     }
 
     /**
+     * Handle the event when a quiz attempt preview is reviewed (admin/teacher finish).
+     *
+     * Triggers the Cloud Run proctoring analysis service if configured.
+     *
+     * @param \mod_quiz\event\attempt_reviewed $event The event object.
+     * @return void
+     */
+    public static function handle_quiz_attempt_reviewed(\mod_quiz\event\attempt_reviewed $event) {
+        self::trigger_analysis($event);
+    }
+
+    /**
      * Take a screenshot during the proctoring process.
      *
      * @param \quizaccess_proctoring\take_screensho $event The event object.
