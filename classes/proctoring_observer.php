@@ -54,8 +54,8 @@ class quizaccess_proctoring_observer {
      * @return void
      */
     public static function handle_quiz_attempt_submitted(\mod_quiz\event\attempt_submitted $event) {
-        self::update_event_data($event);
         self::trigger_analysis($event);
+        self::update_event_data($event);
     }
 
     /**
@@ -78,7 +78,11 @@ class quizaccess_proctoring_observer {
      */
     private static function update_event_data($event) {
         global $DB;
-        $DB->update_record('quizaccess_proctoring_logs', $event);
+        try {
+            $DB->update_record('quizaccess_proctoring_logs', $event);
+        } catch (\Exception $e) {
+            error_log('quizaccess_proctoring [observer]: update_event_data failed: ' . $e->getMessage());
+        }
     }
 
     /**
