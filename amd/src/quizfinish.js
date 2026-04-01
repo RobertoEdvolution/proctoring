@@ -1,84 +1,83 @@
 /**
- * Quiz finish module — intercepts the "Submit all and finish" form on the
- * summary page and triggers the Cloud Run analysis web service before the
- * form is actually submitted.  Works transparently with Moodle's own
- * confirmation modal: we hook the form's submit() method so *any* code
- * path that submits the form (button click, confirmation dialog, timer)
- * goes through our interceptor first.
+ * Quiz finish module — fires the Cloud Run analysis web service when the
+ * student submits the quiz, without blocking or delaying the normal Moodle
+ * submission flow.  Uses navigator.sendBeacon (with fetch+keepalive as
+ * fallback) so the request survives page navigation.
  *
  * @module     quizaccess_proctoring/quizfinish
  * @copyright  2024 Brain Station 23
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define(['core/ajax'], function(Ajax) {
+define([], function() {
 
-    /** @type {boolean} Guard so we only trigger once per page load. */
-    var triggered = false;
+    /** @type {boolean} Guard so we only fire once per page load. */
+    var fired = false;
 
     /**
-     * Fire the Cloud Run analysis call then submit the form for real.
+     * Send the Cloud Run trigger via sendBeacon/fetch-keepalive.
+     * This survives page navigation so the form submit is never delayed.
      *
-     * @param {HTMLFormElement} form
-     * @param {Object}         props  courseid, quizid, status (attemptid)
+     * @param {Object} props  courseid, quizid, status (attemptid)
      */
-    var triggerAndSubmit = function(form, props) {
-        if (triggered) {
+    var fireCloudRun = function(props) {
+        if (fired) {
             return;
         }
-        triggered = true;
+        fired = true;
 
-        /**
-         * Actually submit the form using the native HTMLFormElement.submit()
-         * so our override is bypassed and the page navigates normally.
-         */
-        var realSubmit = function() {
-            HTMLFormElement.prototype.submit.call(form);
-        };
+        // Build the Moodle AJAX web-service URL.
+        var wsUrl = M.cfg.wwwroot + '/lib/ajax/service.php?sesskey='
+            + M.cfg.sesskey + '&info=quizaccess_proctoring_trigger_analysis';
 
-        // Safety net: if the AJAX call hangs, submit anyway after 10 s
-        // so the student is never blocked.
-        var safetyTimer = setTimeout(realSubmit, 10000);
-
-        Ajax.call([{
+        var payload = JSON.stringify([{
+            index: 0,
             methodname: 'quizaccess_proctoring_trigger_analysis',
             args: {
                 courseid: props.courseid,
                 quizid:   props.quizid,
                 attemptid: props.status,
             }
-        }])[0].always(function() {
-            clearTimeout(safetyTimer);
-            realSubmit();
-        });
+        }]);
+
+        // sendBeacon is fire-and-forget and survives page unload.
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(wsUrl, new Blob([payload], {type: 'application/json'}));
+        } else {
+            // Fallback: fetch with keepalive also survives navigation.
+            fetch(wsUrl, {
+                method: 'POST',
+                body: payload,
+                keepalive: true,
+                headers: {'Content-Type': 'application/json'}
+            }).catch(function() { /* intentionally silent */ });
+        }
     };
 
     return {
         /**
-         * Initialise the quiz finish interceptor.
+         * Initialise the quiz finish trigger.
          *
          * @param {Object} props Record passed from rule.php (courseid, quizid, status).
          */
         init: function(props) {
             var form = document.getElementById('frm-finishattempt');
             if (!form) {
-                // Not on the summary page, or form not yet in the DOM — nothing to do.
                 return;
             }
 
-            // Override the form's submit() method.  Moodle's own confirmation
-            // module (mod_quiz/submission_confirmation) calls form.submit()
-            // after the student confirms, so this intercepts that path.
+            // Hook into the form's submit() method.  Moodle's confirmation
+            // module calls form.submit() after the student confirms — we
+            // fire the Cloud Run beacon and then let the real submit proceed.
+            var nativeSubmit = HTMLFormElement.prototype.submit;
             form.submit = function() {
-                triggerAndSubmit(form, props);
+                fireCloudRun(props);
+                nativeSubmit.call(form);
             };
 
-            // Also catch a direct <form> submit event (e.g. Enter key or
-            // any code that dispatches a submit event instead of calling .submit()).
-            form.addEventListener('submit', function(e) {
-                if (!triggered) {
-                    e.preventDefault();
-                    triggerAndSubmit(form, props);
-                }
+            // Also catch submit events (e.g. Enter key).
+            form.addEventListener('submit', function() {
+                fireCloudRun(props);
+                // Don't preventDefault — let the form submit normally.
             });
         }
     };
