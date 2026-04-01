@@ -136,13 +136,12 @@ class quizaccess_proctoring_observer {
             'CURLOPT_CONNECTTIMEOUT' => 5,
             'CURLOPT_TIMEOUT' => 10,
         ]);
-
-        $response = $curl->post($cloudrunurl, $payload, [
-            'CURLOPT_HTTPHEADER' => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
+        $curl->setHeader([
+            'Content-Type: application/json',
+            'Accept: application/json',
         ]);
+
+        $response = $curl->post($cloudrunurl, $payload);
 
         $info = $curl->get_info();
         $httpcode = $info['http_code'] ?? 0;
