@@ -1,104 +1,85 @@
 /**
- * Quiz finish module — shows a modal on the summary page that triggers
- * the Cloud Run analysis web service before allowing the form to submit.
+ * Quiz finish module — intercepts the "Submit all and finish" form on the
+ * summary page and triggers the Cloud Run analysis web service before the
+ * form is actually submitted.  Works transparently with Moodle's own
+ * confirmation modal: we hook the form's submit() method so *any* code
+ * path that submits the form (button click, confirmation dialog, timer)
+ * goes through our interceptor first.
  *
  * @module     quizaccess_proctoring/quizfinish
  * @copyright  2024 Brain Station 23
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define(['core/ajax', 'core/notification', 'core/modal_factory', 'core/modal_events', 'core/str'],
-function(Ajax, Notification, ModalFactory, ModalEvents, Str) {
+define(['core/ajax'], function(Ajax) {
+
+    /** @type {boolean} Guard so we only trigger once per page load. */
+    var triggered = false;
 
     /**
-     * Submit the form, ensuring the finishattempt field is present.
+     * Fire the Cloud Run analysis call then submit the form for real.
      *
      * @param {HTMLFormElement} form
+     * @param {Object}         props  courseid, quizid, status (attemptid)
      */
-    var submitForm = function(form) {
-        if (!form.querySelector('input[name="finishattempt"]')) {
-            var hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'finishattempt';
-            hidden.value = '1';
-            form.appendChild(hidden);
+    var triggerAndSubmit = function(form, props) {
+        if (triggered) {
+            return;
         }
-        form.submit();
+        triggered = true;
+
+        /**
+         * Actually submit the form using the native HTMLFormElement.submit()
+         * so our override is bypassed and the page navigates normally.
+         */
+        var realSubmit = function() {
+            HTMLFormElement.prototype.submit.call(form);
+        };
+
+        // Safety net: if the AJAX call hangs, submit anyway after 10 s
+        // so the student is never blocked.
+        var safetyTimer = setTimeout(realSubmit, 10000);
+
+        Ajax.call([{
+            methodname: 'quizaccess_proctoring_trigger_analysis',
+            args: {
+                courseid: props.courseid,
+                quizid:   props.quizid,
+                attemptid: props.status,
+            }
+        }])[0].always(function() {
+            clearTimeout(safetyTimer);
+            realSubmit();
+        });
     };
 
     return {
         /**
          * Initialise the quiz finish interceptor.
          *
-         * @param {Object} props Record passed from rule.php (contains courseid, quizid, status).
+         * @param {Object} props Record passed from rule.php (courseid, quizid, status).
          */
         init: function(props) {
-            // Only run on the quiz summary page.
-            if (!document.getElementById('page-mod-quiz-summary')) {
-                return;
-            }
-
-            // Find the submit button (Moodle uses .mod_quiz-next-nav on quiz nav buttons).
-            var submitBtn = document.querySelector('.mod_quiz-next-nav')
-                || document.querySelector('button[type="submit"]');
-            if (!submitBtn) {
-                return;
-            }
-
-            var form = submitBtn.closest('form');
+            var form = document.getElementById('frm-finishattempt');
             if (!form) {
+                // Not on the summary page, or form not yet in the DOM — nothing to do.
                 return;
             }
 
-            // Intercept the click in the capture phase so it fires before
-            // Moodle's own confirmation dialog handler.
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+            // Override the form's submit() method.  Moodle's own confirmation
+            // module (mod_quiz/submission_confirmation) calls form.submit()
+            // after the student confirms, so this intercepts that path.
+            form.submit = function() {
+                triggerAndSubmit(form, props);
+            };
 
-                Str.get_strings([
-                    {key: 'quizfinish:modal_title', component: 'quizaccess_proctoring'},
-                    {key: 'quizfinish:modal_body', component: 'quizaccess_proctoring'},
-                    {key: 'quizfinish:modal_submit', component: 'quizaccess_proctoring'},
-                    {key: 'quizfinish:modal_processing', component: 'quizaccess_proctoring'},
-                ]).then(function(strings) {
-                    return ModalFactory.create({
-                        type: ModalFactory.types.SAVE_CANCEL,
-                        title: strings[0],
-                        body: strings[1],
-                    }).then(function(modal) {
-                        modal.setSaveButtonText(strings[2]);
-
-                        modal.getRoot().on(ModalEvents.save, function(ev) {
-                            ev.preventDefault();
-
-                            // Disable save button and show processing text.
-                            var saveBtn = modal.getRoot().find('[data-action="save"]');
-                            saveBtn.prop('disabled', true).text(strings[3]);
-
-                            Ajax.call([{
-                                methodname: 'quizaccess_proctoring_trigger_analysis',
-                                args: {
-                                    courseid: props.courseid,
-                                    quizid: props.quizid,
-                                    attemptid: props.status,
-                                }
-                            }])[0]
-                                .done(function() {
-                                    modal.destroy();
-                                    submitForm(form);
-                                })
-                                .fail(function() {
-                                    // Even on failure, allow submission so the student is not blocked.
-                                    modal.destroy();
-                                    submitForm(form);
-                                });
-                        });
-
-                        modal.show();
-                        return modal;
-                    });
-                }).catch(Notification.exception);
-            }, true); // useCapture = true
+            // Also catch a direct <form> submit event (e.g. Enter key or
+            // any code that dispatches a submit event instead of calling .submit()).
+            form.addEventListener('submit', function(e) {
+                if (!triggered) {
+                    e.preventDefault();
+                    triggerAndSubmit(form, props);
+                }
+            });
         }
     };
 });
