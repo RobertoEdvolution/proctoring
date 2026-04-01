@@ -247,3 +247,7 @@ $string['webcampicture'] = 'Captured pictures';
 $string['wrong_during_taking_image'] = 'Something went wrong during taking the image.';
 $string['wrong_during_taking_screenshot'] = 'Something went wrong during taking screenshot.';
 $string['youmustagree'] = 'You must acknowledge the proctoring notice before continuing.';
+$string['quizfinish:modal_title'] = 'Finalize Exam';
+$string['quizfinish:modal_body'] = '<p>Your proctoring data (images and audio) will be sent for analysis.</p><p>Click <strong>Submit &amp; Analyze</strong> to finalize your exam.</p>';
+$string['quizfinish:modal_submit'] = 'Submit & Analyze';
+$string['quizfinish:modal_processing'] = 'Processing...';

@@ -440,6 +440,9 @@ class quizaccess_proctoring extends quizaccess_proctoring_parent_class_alias {
 
             // Initialise the proctoring setup with JavaScript.
             $page->requires->js_call_amd('quizaccess_proctoring/proctoring', 'setup', [$record, $modelurl]);
+
+            // Initialise the quiz finish interceptor (shows modal on summary page).
+            $page->requires->js_call_amd('quizaccess_proctoring/quizfinish', 'init', [$record]);
         }
     }
 

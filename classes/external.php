@@ -630,4 +630,104 @@ class quizaccess_proctoring_external extends external_api {
             false
         );
     }
+
+    /**
+     * Defines parameters for trigger_analysis.
+     *
+     * @return external_function_parameters
+     */
+    public static function trigger_analysis_parameters() {
+        return new external_function_parameters([
+            'courseid'  => new external_value(PARAM_INT, 'course id'),
+            'quizid'    => new external_value(PARAM_INT, 'quiz course module id'),
+            'attemptid' => new external_value(PARAM_INT, 'quiz attempt id'),
+        ]);
+    }
+
+    /**
+     * Trigger Cloud Run analysis for the current user's quiz attempt.
+     *
+     * Acts as a server-side proxy so the Cloud Run token is never exposed to the client.
+     *
+     * @param int $courseid  The course ID.
+     * @param int $quizid    The course module ID (cmid).
+     * @param int $attemptid The quiz_attempts ID.
+     * @return array status and warnings.
+     */
+    public static function trigger_analysis($courseid, $quizid, $attemptid) {
+        global $USER;
+
+        self::validate_parameters(self::trigger_analysis_parameters(), [
+            'courseid'  => $courseid,
+            'quizid'    => $quizid,
+            'attemptid' => $attemptid,
+        ]);
+
+        $context = context_course::instance($courseid);
+        if (
+            !is_enrolled($context, $USER->id, 'mod/quiz:attempt') &&
+            !has_capability('mod/quiz:grade', $context)
+        ) {
+            throw new moodle_exception(
+                'accessdenied', 'quizaccess_proctoring', '', null,
+                get_string('notenrolled', 'quizaccess_proctoring')
+            );
+        }
+
+        $cloudrunurl   = get_config('quizaccess_proctoring', 'cloudrun_url');
+        $cloudruntoken = get_config('quizaccess_proctoring', 'cloudrun_token');
+
+        if (empty($cloudrunurl) || empty($cloudruntoken)) {
+            return ['status' => 'skipped', 'warnings' => []];
+        }
+
+        $payload = json_encode([
+            'token'          => $cloudruntoken,
+            'userid'         => (int) $USER->id,
+            'quizid'         => (int) $quizid,
+            'courseid'       => (int) $courseid,
+            'attemptid'      => (int) $attemptid,
+            'moodle_base_url' => (string) (new \moodle_url('/'))->out(false),
+        ]);
+
+        $curl = new \curl();
+        $curl->setopt([
+            'CURLOPT_CONNECTTIMEOUT' => 5,
+            'CURLOPT_TIMEOUT'        => 10,
+        ]);
+        $curl->setHeader([
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ]);
+
+        $response = $curl->post($cloudrunurl, $payload);
+        $info     = $curl->get_info();
+        $httpcode = $info['http_code'] ?? 0;
+
+        if ($httpcode >= 200 && $httpcode < 300) {
+            return ['status' => 'success', 'warnings' => []];
+        }
+
+        return [
+            'status'   => 'error',
+            'warnings' => [[
+                'item'        => 'cloudrun',
+                'itemid'      => $attemptid,
+                'warningcode' => 'httperror',
+                'message'     => "Cloud Run returned HTTP {$httpcode}",
+            ]],
+        ];
+    }
+
+    /**
+     * Return structure for trigger_analysis.
+     *
+     * @return external_single_structure
+     */
+    public static function trigger_analysis_returns() {
+        return new external_single_structure([
+            'status'   => new external_value(PARAM_TEXT, 'result status: success, skipped, or error'),
+            'warnings' => new external_warnings(),
+        ]);
+    }
 }

@@ -62,4 +62,15 @@ $functions = [
         'capabilities' => 'quizaccess/proctoring:sendcamshot',
         'services'     => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ],
+
+    // Trigger Cloud Run analysis on quiz finish (client-side proxy).
+    'quizaccess_proctoring_trigger_analysis' => [
+        'classname'    => 'quizaccess_proctoring_external',
+        'methodname'   => 'trigger_analysis',
+        'description'  => 'Trigger Cloud Run proctoring analysis for the current attempt.',
+        'type'         => 'write',
+        'ajax'         => true,
+        'capabilities' => 'quizaccess/proctoring:sendcamshot',
+        'services'     => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
 ];
